@@ -324,3 +324,49 @@ RegisterNetEvent('qb-shops:sv:checklabels', function()
     end
 end)
 
+RegisterNetEvent('qb-shops:server:orderitems', function(item, price, amount, id)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    local totalprice = price * amount
+    if Player.Functions.GetMoney("bank") >= totalprice then
+        Player.Functions.RemoveMoney('bank', totalprice, 'order shop items')
+        TriggerClientEvent('QBCore:Notify', src,'Take the vehicle outside and bring the items', 'success')
+        TriggerClientEvent('qb-shops:client:startorderitems', src, item, id, amount)
+    else
+        TriggerClientEvent('QBCore:Notify', src,'You dont have enough money in your bank account', 'error')
+    end
+end)
+
+local function checkcategorie(categorie, id)
+    -- Fetch the current category list for the specified shop ID from the database
+    local currentCategoryListJSON = MySQL.Sync.fetchScalar('SELECT category FROM shops WHERE shopid = ?', {id})
+
+    -- Decode the JSON string into a Lua table
+    local currentCategoryList = {}
+    if currentCategoryListJSON then
+        currentCategoryList = json.decode(currentCategoryListJSON) or {}
+    end
+
+    -- Check if the specified category exists in the decoded table
+    return currentCategoryList[categorie] ~= nil
+end
+
+RegisterNetEvent('qb-shops:sv:addorderitemtostock', function(item, amount, id, categorie)
+    local newItemToAdd = {
+        name = item,
+        price = 8,
+        amount = amount,
+        info = {},
+        type = "item",
+        image = QBCore.Shared.Items[item].image,
+    }
+    local iscategoriexist = checkcategorie(categorie, id)
+    if iscategoriexist then
+        AddItem(id,categorie,newItemToAdd)
+    else
+        AddCategory(id, categorie, "yoo")
+        Wait(500)
+        AddItem(id,categorie,newItemToAdd)
+    end
+    TriggerClientEvent('QBCore:Notify', source,'item has been successfly added', 'error')
+end)

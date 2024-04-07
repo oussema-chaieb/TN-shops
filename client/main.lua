@@ -10,6 +10,9 @@ local pedSpawned2 = false
 local ownablePed = {}
 local price = 0
 local StoreBlip = {}
+local Item = nil
+local Id = nil
+local Amount = nil
 -- Functions
 local function createBlips()
     if pedSpawned then return end
@@ -473,6 +476,17 @@ RegisterNetEvent('qb-shops:client:managestore', function(data) -- Menu, seens af
             },
         },
         {
+            header = "Order items",
+            txt = "", 
+            icon = "fas fa-usd",
+            params = {
+                event = "qb-shops:client:orderitems",
+                args = {
+                    id = data.id,
+                },
+            },
+        },
+        {
             header = "change price",
             txt = "", 
             icon = "fas fa-usd",
@@ -661,6 +675,7 @@ RegisterNetEvent('qb-shops:client:additemtoshop', function(data)
     local shopIt = Getitems(data.id)
     local shopCategory = shopIt.categoryList
     local categoryKeys = {}
+    if next(shopCategory) == nil then return QBCore.Functions.Notify("you need to add category first", "error") end
     for key, _ in pairs(shopCategory) do
         categoryKeys[#categoryKeys + 1] = {
             text = key,
@@ -735,7 +750,7 @@ end)
 RegisterNetEvent('qb-shops:client:removeitemfromshop', function(data)
     local label = GetShopLabel(data.id)
     local allItems = GetAllItems(data.id)
-    print(json.encode(allItems))
+    if next(allItems) == nil then return QBCore.Functions.Notify("no item to remove", "error") end
     local itemlist = {}
     for _, item in pairs(allItems) do
         print(item.name)
@@ -780,9 +795,69 @@ RegisterNetEvent('qb-shops:client:removeitemfromshop', function(data)
     end
 end)
 
+RegisterNetEvent('qb-shops:client:orderitems', function(data)
+    local OrdreMenu = {
+        {
+            header = "Order Menu",--Lang:t('menu.dryMeny'),
+            isMenuHeader = true
+        }
+    }
+    for k, v in pairs(Config.Orders.items) do
+        OrdreMenu[#OrdreMenu + 1] = {
+            header = QBCore.Shared.Items[v.item].label,
+            icon = "fa-solid fa-circle",
+            txt = "Order this item with price : "..v.price.." $",
+            params = {
+                event = 'qb-shops:client:amountorderitem',
+                args = {
+                    id = data.id,
+                    item = v.item,
+                    categorie = v.categorie,
+                    price = v.price
+                }
+            }
+        }
+    end
+    OrdreMenu[#OrdreMenu + 1] = {
+        header = Lang:t('menu.exitHeader'),
+        params = {
+            event = "qb-menu:closeMenu"
+        }
+    }
+    exports['qb-menu']:openMenu(OrdreMenu)
+end)
+local Categorie = nil
+RegisterNetEvent('qb-shops:client:amountorderitem', function(data)
+    local menu = exports["qb-input"]:ShowInput({
+        header = "how many",
+        submitText = "SUBMIT",
+        inputs = {
+            {
+                type = "number",
+                text = "123",
+                name = "amount",
+                isRequired = true
+            },
+        }
+    })
+    if menu then
+        if not menu.amount then
+            return
+        else
+            if tonumber(menu.amount) > 0 then
+                Categorie = data.categorie
+                TriggerServerEvent("qb-shops:server:orderitems", data.item, data.price, tonumber(menu.amount), data.id)
+            else
+                return QBCore.Functions.Notify("must be greater than 0", "error")
+            end
+        end
+    end
+end)
+
 RegisterNetEvent('qb-shops:client:changeitemprice', function(data)
     local label = GetShopLabel(data.id)
     local items = GetAllItems(data.id)
+    if next(items) == nil then return QBCore.Functions.Notify("you need to add items first", "error") end
     local itemlist = {}
     for _, item in pairs(items) do
         if QBCore.Shared.Items[item.name] then
@@ -976,4 +1051,298 @@ RegisterNetEvent('qb-shops:client:openscriptshop', function(data)
         }
     })
     SetNuiFocus(true, true)
+end)
+local PlaceBlip = nil
+local DrugObject = nil
+local DrugObject2 = nil
+local DrugTaken,DrugTaken2 = 0,0
+local haspackage,haspackage2 = false,false
+local Vehicle = nil
+local pack = nil
+local packagetrunk = 0
+local anim = false
+local minus = 0
+local PlaceDepotPayoutBlip = nil
+local Place
+
+local function PlaceB()
+	PlaceBlip = AddBlipForCoord(Config.Orders.delivery[Place].Pos.x, Config.Orders.delivery[Place].Pos.y, Config.Orders.delivery[Place].Pos.z)
+	SetBlipSprite(PlaceBlip, 310)
+	SetBlipColour(PlaceBlip, 0)
+	SetBlipAlpha(PlaceBlip, 250)
+	SetBlipScale(PlaceBlip, 0.8)
+	BeginTextCommandSetBlipName("STRING")
+	AddTextComponentString('Place')
+	EndTextCommandSetBlipName(PlaceBlip)
+end
+
+local function PlaceDepotPayoutB()
+	PlaceDepotPayoutBlip = AddBlipForCoord(Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z)
+	SetBlipSprite(PlaceDepotPayoutBlip, 500)
+	SetBlipColour(PlaceDepotPayoutBlip, 0)
+	SetBlipAlpha(PlaceDepotPayoutBlip, 250)
+	SetBlipScale(PlaceDepotPayoutBlip, 0.8)
+	BeginTextCommandSetBlipName("STRING")
+	AddTextComponentString('Payout')
+	EndTextCommandSetBlipName(PlaceDepotPayoutBlip)
+end
+
+local function startAnim(ped, dictionary, anim)
+	Citizen.CreateThread(function()
+	  RequestAnimDict(dictionary)
+	  while not HasAnimDictLoaded(dictionary) do
+		Citizen.Wait(0)
+	  end
+		TaskPlayAnim(ped, dictionary, anim ,8.0, -8.0, -1, 49, 0, false, false, false)
+	end)
+end
+
+local function tookitems(num)
+    local ped = PlayerPedId()
+    startAnim(ped, "anim@gangops@facility@servers@bodysearch@", "player_search")
+    QBCore.Functions.Progressbar("search_for_item", "You pick items...", 1000, false, false, {
+        disableMovement = true,
+        disableCarMovement = true,
+        disableMouse = false,
+        disableCombat = true,
+    }, {}, {}, {}, function()
+    end, function()
+    end)
+    Wait(1000)
+    ClearPedTasks(ped)
+    local coordsPED = GetEntityCoords(ped)
+    local packmodel = math.random(1,2)
+    anim = true
+    if packmodel == 1 then
+        pack = CreateObject(GetHashKey('hei_prop_heist_weed_block_01b'), coordsPED.x, coordsPED.y, coordsPED.z,  false,  true, true)
+    else
+        pack = CreateObject(GetHashKey('hei_prop_heist_weed_block_01'), coordsPED.x, coordsPED.y, coordsPED.z,  false,  true, true)
+    end
+    SetEntityCollision(pack, false)		
+    AttachEntityToEntity(pack, ped, GetPedBoneIndex(ped, 57005), 0.25, 0.05, -0.2, 300.0, 250.0, 20.0, true, true, false, true, 1, true)
+
+    SetVehicleDoorsLocked(Vehicle, 2)
+    if num == 1 then
+        haspackage = true
+        DrugTaken = DrugTaken + 1
+        if DrugTaken > 2 then
+            DeleteEntity(DrugObject)
+            DrugObject = nil
+            RemoveBlip(PlaceDrugBlip)
+            DrugTaken = 0
+        end
+    elseif num == 2 then
+        haspackage2 = true
+        DrugTaken2 = DrugTaken2 + 1
+        if DrugTaken2 > 2 then
+            DeleteEntity(DrugObject2)
+            DrugObject2 = nil
+            RemoveBlip(PlaceDrugBlip2)
+            DrugTaken2 = 0
+        end
+    end
+end
+
+
+
+local function startdelivery(item, id, amount)
+    if not IsAnyVehicleNearPoint(Config.Orders.carspawn[id].x, Config.Orders.carspawn[id].y, Config.Orders.carspawn[id].z, 2) then	
+        QBCore.Functions.SpawnVehicle(Config.Orders.carmodel, function(vehicle)
+            SetVehicleNumberPlateText(vehicle, "DON_"..tostring(math.random(1000, 9999)))
+            SetEntityHeading(vehicle, Config.Orders.carspawn[id].w)
+            TriggerEvent("vehiclekeys:client:SetOwner", GetVehicleNumberPlateText(vehicle))
+            SetVehicleEngineOn(vehicle, true, true)
+            SetVehicleDirtLevel(vehicle, 0.0)
+            exports[Config.Fuel]:SetFuel(vehicle, 100)
+            Vehicle = vehicle
+            Item = item
+            Id = id
+            Amount = amount
+        end, Config.Orders.carspawn[id], true)
+        Place = math.random(1,15)
+        PlaceB()
+
+        CreateThread(function()
+
+            DrugObject = CreateObject(GetHashKey('hei_prop_heist_weed_pallet'), Config.Orders.delivery[Place].DrugPos.x, Config.Orders.delivery[Place].DrugPos.y, Config.Orders.delivery[Place].DrugPos.z-1, false, true, true)
+            PlaceObjectOnGroundProperly(DrugObject)
+            FreezeEntityPosition(DrugObject, true)
+
+            exports['qb-target']:AddTargetEntity(DrugObject, {
+                options = { {
+                    icon = "fas fa-sack-dollar",
+                    label = "take items",
+                    action = function()
+                        tookitems(1)
+                    end
+                }
+                },
+                distance = 1.5
+            })
+
+            DrugObject2 = CreateObject(GetHashKey('hei_prop_heist_weed_pallet'), Config.Orders.delivery[Place].DrugPos2.x, Config.Orders.delivery[Place].DrugPos2.y, Config.Orders.delivery[Place].DrugPos2.z-1, false, true, true)
+            PlaceObjectOnGroundProperly(DrugObject2)
+            FreezeEntityPosition(DrugObject2, true)
+
+            exports['qb-target']:AddTargetEntity(DrugObject2, {
+                options = { {
+                    icon = "fas fa-sack-dollar",
+                    label = "take items",
+                    action = function()
+                        tookitems(2)
+                    end
+                }
+                },
+                distance = 1.5
+            })
+        end)
+    else
+        QBCore.Functions.Notify("The spawn site is blocked!", "error")
+    end
+end
+
+RegisterNetEvent('qb-shops:client:startorderitems', function(item, id, amount)
+    QBCore.Functions.Notify("Take my car and go to your first destination", "success")
+    startdelivery(item, id, amount)
+end)
+
+local function DrawText3Ds(x, y, z, text)
+	SetTextScale(0.35, 0.35)
+    SetTextFont(4)
+    SetTextProportional(1)
+    SetTextColour(255, 255, 255, 215)
+    SetTextEntry("STRING")
+    SetTextCentre(true)
+    AddTextComponentString(text)
+    SetDrawOrigin(x,y,z, 0)
+    DrawText(0.0, 0.0)
+    local factor = (string.len(text)) / 370
+    DrawRect(0.0, 0.0+0.0125, 0.017+ factor, 0.03, 0, 0, 0, 75)
+    ClearDrawOrigin()
+end
+
+Citizen.CreateThread(function()
+	while true do
+		local sleep = 500
+		local ped = PlayerPedId()
+		local coords = GetEntityCoords(ped)
+		 	if haspackage or haspackage2 then
+				sleep = 5 
+				local trunkpos = GetOffsetFromEntityInWorldCoords(Vehicle, 0, -2.5, 0)
+				if GetDistanceBetweenCoords(coords.x, coords.y, coords.z, trunkpos.x, trunkpos.y, trunkpos.z, true) < 2.5 then
+					DrawText3Ds(trunkpos.x, trunkpos.y, trunkpos.z + 0.25, 'To put down drugs, press [~g~E~w~]')
+					if IsControlJustReleased(0, 38) and not IsPedInAnyVehicle(ped, false) then
+						DeleteEntity(pack)
+						startAnim(ped, "anim@gangops@facility@servers@bodysearch@", "player_search")
+                        QBCore.Functions.Progressbar("put_item", "You put the drugs down...", 1000, false, false, {
+                            disableMovement = true,
+                            disableCarMovement = true,
+                            disableMouse = false,
+                            disableCombat = true,
+                        }, {}, {}, {}, function()
+                        end, function()
+                        end)
+						Citizen.Wait(1000)
+                        anim = false
+						ClearPedTasks(ped)
+						haspackage = false
+						haspackage2 = false
+						SetVehicleDoorsLocked(Vehicle, 1)
+						ClearPedTasks(ped)
+						TaskPlayAnim(ped, 'anim@heists@box_carry@', "exit", 3.0, 1.0, -1, 49, 0, 0, 0, 0)					
+					
+						
+						local coordsPED = GetEntityCoords(ped)
+						
+						if packmodel == 1 then
+							Config.Package[packagetrunk].pack = CreateObject(GetHashKey('hei_prop_heist_weed_block_01b'), coordsPED.x, coordsPED.y, coordsPED.z, false, true, true)
+						else
+							Config.Package[packagetrunk].pack = CreateObject(GetHashKey('hei_prop_heist_weed_block_01'), coordsPED.x, coordsPED.y, coordsPED.z, false, true, true)
+						end
+						SetEntityCollision(Config.Package[packagetrunk].pack, false)
+
+						if packagetrunk < 4 then
+							AttachEntityToEntity(Config.Package[packagetrunk].pack, Vehicle, GetEntityBoneIndexByName(Vehicle, 'boot'), -0.2, 1.8-minus, 0.05, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+						elseif packagetrunk >= 4 and packagetrunk < 8 then
+							if minus >= 1.0 then
+								minus = 0.0
+							end
+							AttachEntityToEntity(Config.Package[packagetrunk].pack, Vehicle, GetEntityBoneIndexByName(Vehicle, 'boot'), 0.2, 1.8-minus, 0.05, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+						else 
+							if minus >= 1.0 then
+								minus = 0.0
+							end
+							AttachEntityToEntity(Config.Package[packagetrunk].pack, Vehicle, GetEntityBoneIndexByName(Vehicle, 'boot'), 0.0, 1.8-minus, 0.18, 0.0, 0.0, 0.0, true, true, false, true, 1, true)
+						end
+						minus = minus + 0.25
+						packagetrunk = packagetrunk + 1
+					end
+				end
+			end
+            if packagetrunk >= 1 then
+                if not DrugObject2 and not DrugObject then
+                    QBCore.Functions.Notify("Go back to the payer for the payout!", "error")
+                    PlaceDepotPayoutB()
+                    while true do
+                        local sleep = 500
+                        local ped = PlayerPedId()
+                        local coords = GetEntityCoords(ped)
+                        if(GetDistanceBetweenCoords(coords,Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z, true) < 1.5) then	
+                            sleep = 5
+                            DrawText3Ds(Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z+1.0, 'To collect your paycheck, press [~g~G~w~]')
+                            DrawMarker(25, Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z-0.55, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 2.0, 2.0, 2.0, 69, 255, 66, 100, false, true, 2, false, false, false, false)
+                            DrawMarker(36, Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z+0.5, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.0, 1.0, 1.0, 255, 255, 255, 100, false, true, 2, false, false, false, false)
+                            if IsControlJustReleased(0, 47) and IsPedInAnyVehicle(ped, false) then
+                                DeleteVehicle(Vehicle)
+                                Vehicle = nil
+                                RemoveBlip(PlaceBlip)
+                                DrugTaken = 0
+                                DrugTaken2 = 0
+                                haspackage = false
+                                haspackage2 = false
+                                packagetrunk = 0
+                                ClearPedTasks(ped)
+                                DeleteEntity(pack)
+                                minus = 0
+                                anim = false
+                                RemoveBlip(PlaceDepotPayoutBlip)
+                                for i, v in pairs(Config.Package) do
+                                    DeleteEntity(v.pack)
+                                end
+                                TriggerServerEvent("qb-shops:sv:addorderitemtostock", Item, Amount, Id, Categorie)
+                                Place = nil
+                                break
+                            end
+                        else
+                            sleep = 5
+                            DrawMarker(25, Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z-0.55, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 2.0, 2.0, 2.0, 255, 255, 255, 100, false, true, 2, false, false, false, false)
+                            DrawMarker(36, Config.Orders.carspawn[Id].x, Config.Orders.carspawn[Id].y, Config.Orders.carspawn[Id].z+0.5, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.0, 1.0, 1.0, 255, 255, 255, 100, false, true, 2, false, false, false, false)
+                        end									
+                        Citizen.Wait(sleep)
+                    end
+                end
+            end
+		Citizen.Wait(sleep)
+	end
+end)
+
+Citizen.CreateThread(function()
+	local doo = 0
+	while true do
+		sleep = 500
+		if anim then
+			sleep = 0
+			RequestAnimDict('anim@heists@box_carry@')
+			while not HasAnimDictLoaded('anim@heists@box_carry@') do
+			  Citizen.Wait(0)
+			end
+			TaskPlayAnim(PlayerPedId(), 'anim@heists@box_carry@', 'idle' ,8.0, -8.0, -1, 49, 0, false, false, false)
+			doo = doo + 1 
+			if doo >= 3 then
+				doo = 0
+				anim = false
+			end
+		end			
+		Citizen.Wait(sleep)
+	end
 end)

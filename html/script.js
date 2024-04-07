@@ -142,7 +142,7 @@ $(document).on('click', '.job-category-item', function (e) {
 
 $(document).on('click', '.pay', function (e) {
   payType = $(this).data("type"); 
-  $.post("https://qb-shops/pay", JSON.stringify({price:totalCartPrice,payType: payType, cartArr: cartArr}));
+  $.post("https://TN-shops/pay", JSON.stringify({price:totalCartPrice,payType: payType, cartArr: cartArr}));
   cartArr = [];
   $(".cart-box").empty();
   $(".job-cart-box").empty();
@@ -305,7 +305,7 @@ function closeNUI() {
   $(".job-cart-box").empty();
   updateCartView();
   $("body").hide()
-  $.post("https://qb-shops/close", JSON.stringify({}));
+  $.post("https://TN-shops/close", JSON.stringify({}));
   $(".job-box,.job-cart-circle").animate({
     top: "15rem"
   }, 500)
