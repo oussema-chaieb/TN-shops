@@ -33,4 +33,3 @@ files {
   'fonts/*.ttf',
   'fonts/*.otf'
 }
-lua54 'yes'
