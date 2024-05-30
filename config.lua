@@ -18,7 +18,14 @@ Config.Products = {
     },
     ['electrics'] = {
         {name = 'radio',             price = 250, amount = 50,  info = {}, type = 'item', image = "radio.png"},
-        {name = 'fitbit',            price = 400, amount = 150, info = {}, type = 'item', image = "fitbit.png"},
+        {name = 'cryptostick ',             price = 400, amount = 150, info = {}, type = 'item', image = "cryptostick .png"},
+        {name = 'phone_dongle',            price = 400, amount = 150, info = {}, type = 'item', image = "phone_dongle.png"},
+        {name = 'powerbank',            price = 400, amount = 150, info = {}, type = 'item', image = "powerbank.png"},
+        {name = 'black_phone',            price = 400, amount = 150, info = {}, type = 'item', image = "black_phone.png"},
+        {name = 'yellow_phone',            price = 400, amount = 150, info = {}, type = 'item', image = "yellow_phone.png"},
+        {name = 'red_phone',            price = 400, amount = 150, info = {}, type = 'item', image = "red_phone.png"},
+        {name = 'green_phone',            price = 400, amount = 150, info = {}, type = 'item', image = "green_phone.png"},
+        {name = 'white_phone',            price = 400, amount = 150, info = {}, type = 'item', image = "white_phone.png"},
     },
     ['fireworks'] = {
         {name = 'firework1',         price = 50,  amount = 50,  info = {}, type = 'item', image = "firework1.png"},
@@ -609,54 +616,6 @@ Config.Locations = {
         ['blipcolor'] = 0
     },
     -- Leisure Shop Locations
-    ['weedneeds'] = {
-        ['id'] = 25,
-        ['label'] = 'Weed Needs',
-        ['coords'] = vector4(927.19, -1890.07, 32.25, 174.0),
-        ['ped'] = 'a_m_y_beach_01',
-        ["ownable"] = false,
-        ["coords2"] = vector4(0, 0, 0, 0),
-        ["ped2"] = 'a_m_y_business_01',
-        ['scenario'] = 'WORLD_HUMAN_STAND_MOBILE_CLUBHOUSE',
-        ['radius'] = 1.5,
-        ['targetIcon'] = 'fas fa-leaf',
-        ['targetLabel'] = 'Open Weed Shoop',
-        ["job"] = "",
-        ["categoryList"] = {
-            ["weedneeds"] = "weedneeds",
-        },
-        ["itemList"] = {
-            ["weedneeds"] = Config.Products['weedneeds'],
-        },
-        ['showblip'] = false,
-        ['blipsprite'] = 52,
-        ['blipscale'] = 0.8,
-        ['blipcolor'] = 0
-    },
-    ['cokeneeds'] = {
-        ['id'] = 25,
-        ['label'] = 'Coke Needs',
-        ['coords'] = vector4(179.06, -1678.18, 7.27, 246.52),
-        ['ped'] = 'a_m_y_beach_01',
-        ["ownable"] = false,
-        ["coords2"] = vector4(0, 0, 0, 0),
-        ["ped2"] = 'a_m_y_business_01',
-        ['scenario'] = 'WORLD_HUMAN_STAND_MOBILE_CLUBHOUSE',
-        ['radius'] = 1.5,
-        ['targetIcon'] = 'fas fa-leaf',
-        ['targetLabel'] = 'Open Coke Shoop',
-        ["job"] = "",
-        ["categoryList"] = {
-            ["cokeneeds"] = "coke needs",
-        },
-        ["itemList"] = {
-            ["cokeneeds"] = Config.Products['cokeneeds'],
-        },
-        ['showblip'] = false,
-        ['blipsprite'] = 52,
-        ['blipscale'] = 0.8,
-        ['blipcolor'] = 0
-    },
 }
 
 Config.Orders = {
@@ -785,4 +744,4 @@ Config.Package = {
     [14] = {pack},
 }
 
-Config.Fuel = "LegacyFuel"
+Config.Fuel = "cdn-fuel"

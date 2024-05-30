@@ -277,14 +277,14 @@ local function createPeds()
     if pedSpawned then return end
 
     for k, v in pairs(Config.Locations) do
-        local current = type(v["ped"]) == "number" and v["ped"] or joaat(v["ped"])
+        --local current = type(v["ped"]) == "number" and v["ped"] or joaat(v["ped"])
 
-        RequestModel(current)
-        while not HasModelLoaded(current) do
+        RequestModel(v["ped"])
+        while not HasModelLoaded(v["ped"]) do
             Wait(0)
         end
 
-        ShopPed[k] = CreatePed(0, current, v["coords"].x, v["coords"].y, v["coords"].z-1, v["coords"].w, false, false)
+        ShopPed[k] = CreatePed(0, v["ped"], v["coords"].x, v["coords"].y, v["coords"].z-1, v["coords"].w, false, false)
         TaskStartScenarioInPlace(ShopPed[k], v["scenario"], 0, true)
         FreezeEntityPosition(ShopPed[k], true)
         SetEntityInvincible(ShopPed[k], true)
@@ -320,14 +320,14 @@ local function createOwnersPeds()
 
     for k, v in pairs(Config.Locations) do
         --if not v.ownable then return end
-        local current = type(v["ped2"]) == "number" and v["ped2"] or joaat(v["ped2"])
+        --local current = type(v["ped2"]) == "number" and v["ped2"] or joaat(v["ped2"])
 
-        RequestModel(current)
-        while not HasModelLoaded(current) do
+        RequestModel(v["ped2"])
+        while not HasModelLoaded(v["ped2"]) do
             Wait(0)
         end
 
-        ownablePed[k] = CreatePed(0, current, v["coords2"].x, v["coords2"].y, v["coords2"].z-1, v["coords2"].w, false, false)
+        ownablePed[k] = CreatePed(0, v["ped2"], v["coords2"].x, v["coords2"].y, v["coords2"].z-1, v["coords2"].w, false, false)
         TaskStartScenarioInPlace(ownablePed[k], v["scenario"], 0, true)
         FreezeEntityPosition(ownablePed[k], true)
         SetEntityInvincible(ownablePed[k], true)
@@ -906,14 +906,14 @@ local function togglePeds(id)
 
     for k, v in pairs(Config.Locations) do
         if v.id == id then
-            local current = type(v["ped"]) == "number" and v["ped"] or joaat(v["ped"])
+            --local current = type(v["ped"]) == "number" and v["ped"] or joaat(v["ped"])
 
-            RequestModel(current)
-            while not HasModelLoaded(current) do
+            RequestModel(v["ped"])
+            while not HasModelLoaded(v["ped"]) do
                 Wait(0)
             end
     
-            ShopPed[k] = CreatePed(0, current, v["coords"].x, v["coords"].y, v["coords"].z-1, v["coords"].w, false, false)
+            ShopPed[k] = CreatePed(0, v["ped"], v["coords"].x, v["coords"].y, v["coords"].z-1, v["coords"].w, false, false)
             TaskStartScenarioInPlace(ShopPed[k], v["scenario"], 0, true)
             FreezeEntityPosition(ShopPed[k], true)
             SetEntityInvincible(ShopPed[k], true)
